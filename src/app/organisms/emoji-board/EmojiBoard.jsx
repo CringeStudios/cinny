@@ -207,6 +207,12 @@ function EmojiBoard({ onSelect, searchRef }) {
     scrollEmojisRef.current.scrollTop = 0;
   }
 
+  function handleEmojiChange(packs) {
+    let newEmojis = [...emojis];
+    newEmojis.push(...packs.flatMap((pack) => pack.getEmojis()));
+    asyncSearch.setup(newEmojis, { keys: ['shortcode'], isContain: true, limit: 40 });
+  }
+
   const [availableEmojis, setAvailableEmojis] = useState([]);
   const [recentEmojis, setRecentEmojis] = useState([]);
 
@@ -216,6 +222,7 @@ function EmojiBoard({ onSelect, searchRef }) {
     const updateAvailableEmoji = (selectedRoomId) => {
       if (!selectedRoomId) {
         setAvailableEmojis([]);
+        handleEmojiChange([]);
         return;
       }
 
@@ -233,6 +240,7 @@ function EmojiBoard({ onSelect, searchRef }) {
           packs[i].packIndex = i;
         }
         setAvailableEmojis(packs);
+        handleEmojiChange(packs);
       }
     };
 
