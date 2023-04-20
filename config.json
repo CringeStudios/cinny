@@ -1,5 +1,5 @@
 {
   "defaultHomeserver": 0,
-  "homeserverList": ["https://cringe-studios.com:8448"],
+  "homeserverList": ["cringe-studios.com"],
   "allowCustomHomeservers": true
 }
