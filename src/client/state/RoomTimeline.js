@@ -3,6 +3,7 @@ import initMatrix from '../initMatrix';
 import cons from './cons';
 
 import settings from './settings';
+import { ReadReceipt } from 'matrix-js-sdk/lib/models/read-receipt';
 
 function isEdited(mEvent) {
   return mEvent.getRelation()?.rel_type === 'm.replace';
@@ -261,7 +262,21 @@ class RoomTimeline extends EventEmitter {
       if (mEvent === liveEvents[i]) break;
     }
 
-    return [...new Set(readers)];
+    const filteredReceipts = [];
+    readers.forEach((r) => {
+      const e = filteredReceipts.find((x) => x.userId === r.userId);
+      if (e == null) {
+        filteredReceipts.push(r);
+      } else if (r.data.ts < e.data.ts) {
+        const idx = filteredReceipts.indexOf(e);
+        filteredReceipts.splice(idx, 1);
+        filteredReceipts.push(r);
+      }
+    });
+
+    filteredReceipts.sort((a, b) => a.data.ts - b.data.ts);
+
+    return filteredReceipts;
   }
 
   getLiveReaders() {
