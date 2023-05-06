@@ -35,7 +35,8 @@ function ReadReceipts() {
     setRoomId(null);
   };
 
-  function renderPeople(userId) {
+  function renderPeople(user) {
+    const { userId } = user;
     const room = initMatrix.matrixClient.getRoom(roomId);
     const member = room.getMember(userId);
     const getUserDisplayName = () => {
@@ -52,6 +53,7 @@ function ReadReceipts() {
         avatarSrc={member?.getAvatarUrl(initMatrix.matrixClient.baseUrl, 24, 24, 'crop')}
         name={getUserDisplayName(userId)}
         color={colorMXID(userId)}
+        ts={user.data.ts}
       />
     );
   }
@@ -65,9 +67,7 @@ function ReadReceipts() {
       contentOptions={<IconButton src={CrossIC} onClick={() => setIsOpen(false)} tooltip="Close" />}
     >
       <div style={{ marginTop: 'var(--sp-tight)', marginBottom: 'var(--sp-extra-loose)' }}>
-        {
-          readers.map(renderPeople)
-        }
+        {readers.map(renderPeople)}
       </div>
     </Dialog>
   );

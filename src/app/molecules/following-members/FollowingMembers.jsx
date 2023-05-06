@@ -24,7 +24,7 @@ function FollowingMembers({ roomTimeline }) {
 
   useEffect(() => {
     const updateFollowingMembers = () => {
-      setFollowingMembers(roomTimeline.getLiveReaders());
+      setFollowingMembers(roomTimeline.getLiveReaderReceipts());
     };
     updateFollowingMembers();
     roomTimeline.on(cons.events.roomTimeline.LIVE_RECEIPT, updateFollowingMembers);
@@ -35,20 +35,21 @@ function FollowingMembers({ roomTimeline }) {
     };
   }, [roomTimeline]);
 
-  const filteredM = followingMembers.filter((userId) => userId !== myUserId);
+  const filteredM = followingMembers.map((r) => r.userId).filter((userId) => userId !== myUserId);
 
-  return filteredM.length !== 0 && (
-    <button
-      className="following-members"
-      onClick={() => openReadReceipts(roomId, followingMembers)}
-      type="button"
-    >
-      <RawIcon
-        size="extra-small"
-        src={TickMarkIC}
-      />
-      <Text variant="b2">{getUsersActionJsx(roomId, filteredM, 'following the conversation.')}</Text>
-    </button>
+  return (
+    filteredM.length !== 0 && (
+      <button
+        className="following-members"
+        onClick={() => openReadReceipts(roomId, followingMembers)}
+        type="button"
+      >
+        <RawIcon size="extra-small" src={TickMarkIC} />
+        <Text variant="b2">
+          {getUsersActionJsx(roomId, filteredM, 'following the conversation.')}
+        </Text>
+      </button>
+    )
   );
 }
 

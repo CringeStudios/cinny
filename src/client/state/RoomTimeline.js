@@ -251,6 +251,19 @@ class RoomTimeline extends EventEmitter {
     return [...new Set(readers)];
   }
 
+  getEventReaderReceipts(mEvent) {
+    const liveEvents = this.liveTimeline.getEvents();
+    const readers = [];
+    if (!mEvent) return [];
+
+    for (let i = liveEvents.length - 1; i >= 0; i -= 1) {
+      readers.splice(readers.length, 0, ...this.room.getReceiptsForEvent(liveEvents[i]));
+      if (mEvent === liveEvents[i]) break;
+    }
+
+    return [...new Set(readers)];
+  }
+
   getLiveReaders() {
     const liveEvents = this.liveTimeline.getEvents();
     const getLatestVisibleEvent = () => {
@@ -260,16 +273,41 @@ class RoomTimeline extends EventEmitter {
           // eslint-disable-next-line no-continue
           continue;
         }
-        if (!mEvent.isRedacted()
-          && !isReaction(mEvent)
-          && !isEdited(mEvent)
-          && cons.supportEventTypes.includes(mEvent.getType())
-        ) return mEvent;
+        if (
+          !mEvent.isRedacted() &&
+          !isReaction(mEvent) &&
+          !isEdited(mEvent) &&
+          cons.supportEventTypes.includes(mEvent.getType())
+        )
+          return mEvent;
       }
       return liveEvents[liveEvents.length - 1];
     };
 
     return this.getEventReaders(getLatestVisibleEvent());
+  }
+
+  getLiveReaderReceipts() {
+    const liveEvents = this.liveTimeline.getEvents();
+    const getLatestVisibleEvent = () => {
+      for (let i = liveEvents.length - 1; i >= 0; i -= 1) {
+        const mEvent = liveEvents[i];
+        if (mEvent.getType() === 'm.room.member' && hideMemberEvents(mEvent)) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+        if (
+          !mEvent.isRedacted() &&
+          !isReaction(mEvent) &&
+          !isEdited(mEvent) &&
+          cons.supportEventTypes.includes(mEvent.getType())
+        )
+          return mEvent;
+      }
+      return liveEvents[liveEvents.length - 1];
+    };
+
+    return this.getEventReaderReceipts(getLatestVisibleEvent());
   }
 
   getUnreadEventIndex(readUpToEventId) {

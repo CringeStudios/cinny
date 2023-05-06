@@ -18,6 +18,7 @@ const cons = {
     'm.room.encrypted',
     'm.room.member',
     'm.sticker',
+    // 'im.vector.modular.widgets', TODO: fix Jitsi widget integration
   ],
   notifs: {
     DEFAULT: 'default',
