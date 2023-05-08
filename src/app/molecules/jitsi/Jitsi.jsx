@@ -32,7 +32,7 @@ function Jitsi({ domain, conferenceId }) {
       )}
       {!active && (
         <div onClick={meetingClicked}>
-          <Text style={{ color: 'orangered' }}>Jitsi - Click me to join</Text>
+          <Text style={{ color: 'orangered' }}>Jitsi meeting started</Text>
         </div>
       )}
     </>

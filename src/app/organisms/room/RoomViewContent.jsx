@@ -126,12 +126,13 @@ function renderEvent(roomTimeline, mEvent, prevMEvent, isFocus, isEdit, setEdit,
 
   if (mEvent.getType() === 'im.vector.modular.widgets') {
     if (mEvent.getContent().type === 'jitsi') {
-      return (
-        <Jitsi
-          domain={mEvent.getContent().data.domain}
-          conferenceId={mEvent.getContent().data.conferenceId}
-        />
-      );
+      /*
+      <Jitsi
+        domain={mEvent.getContent().data.domain}
+        conferenceId={mEvent.getContent().data.conferenceId}
+      />
+      */
+      return <Text style={{ color: 'orangered' }}>Jitsi meeting started</Text>;
     }
 
     return <Text>Widget changed</Text>;
