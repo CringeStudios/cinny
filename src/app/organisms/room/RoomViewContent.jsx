@@ -27,8 +27,6 @@ import { parseTimelineChange } from './common';
 import TimelineScroll from './TimelineScroll';
 import EventLimit from './EventLimit';
 import Text from '../../atoms/text/Text';
-import { JitsiMeeting } from '@jitsi/react-sdk';
-import Jitsi from '../../molecules/jitsi/Jitsi';
 
 const PAG_LIMIT = 30;
 const MAX_MSG_DIFF_MINUTES = 5;
@@ -132,10 +130,28 @@ function renderEvent(roomTimeline, mEvent, prevMEvent, isFocus, isEdit, setEdit,
         conferenceId={mEvent.getContent().data.conferenceId}
       />
       */
-      return <Text style={{ color: 'orangered' }}>Jitsi meeting started</Text>;
+      return (
+        <div className="message message--body-only">
+          <div className="message__avatar-container" />
+          <div className="message__main-container">
+            <Text className="message__body" style={{ backgroundColor: 'dimgray', padding: '5px' }}>
+              Jitsi meeting started
+            </Text>
+          </div>
+        </div>
+      );
     }
 
-    return <Text>Widget changed</Text>;
+    return (
+      <div className="message message--body-only">
+        <div className="message__avatar-container" />
+        <div className="message__main-container">
+          <Text className="message__body" style={{ backgroundColor: 'dimgray', padding: '5px' }}>
+            Widget changed/removed
+          </Text>
+        </div>
+      </div>
+    );
   }
 
   if (mEvent.getType() === 'm.room.member') {

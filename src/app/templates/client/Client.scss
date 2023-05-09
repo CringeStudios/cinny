@@ -7,7 +7,7 @@
 
 .navigation__wrapper {
   width: var(--navigation-width);
-  
+
   @include screen.smallerThan(mobileBreakpoint) {
     width: 100%;
   }
@@ -53,4 +53,14 @@
   .context-menu__item .text {
     margin: 0 !important;
   }
+}
+
+.jitsi_pip {
+  position: absolute;
+  z-index: 2000;
+  top: 50%;
+  left: 50%;
+  margin-left: -5rem;
+  margin-top: -10rem;
+  pointer-events: none;
 }
