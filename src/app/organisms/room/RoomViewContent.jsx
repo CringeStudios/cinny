@@ -26,7 +26,11 @@ import { useForceUpdate } from '../../hooks/useForceUpdate';
 import { parseTimelineChange } from './common';
 import TimelineScroll from './TimelineScroll';
 import EventLimit from './EventLimit';
+<<<<<<< HEAD
 import Text from '../../atoms/text/Text';
+=======
+import { getResizeObserverEntry, useResizeObserver } from '../../hooks/useResizeObserver';
+>>>>>>> cinnyapp/cinny/dev
 
 const PAG_LIMIT = 30;
 const MAX_MSG_DIFF_MINUTES = 5;
@@ -413,7 +417,7 @@ function useEventArrive(roomTimeline, readUptoEvtStore, timelineScrollRef, event
 
 let jumpToItemIndex = -1;
 
-function RoomViewContent({ eventId, roomTimeline }) {
+function RoomViewContent({ roomInputRef, eventId, roomTimeline }) {
   const [throttle] = useState(new Throttle());
 
   const timelineSVRef = useRef(null);
@@ -509,11 +513,33 @@ function RoomViewContent({ eventId, roomTimeline }) {
     }
   }, [newEvent]);
 
+<<<<<<< HEAD
   const listenKeyboard = useCallback(
     (event) => {
       if (event.ctrlKey || event.altKey || event.metaKey) return;
       if (event.key !== 'ArrowUp') return;
       if (navigation.isRawModalVisible) return;
+=======
+  useResizeObserver(
+    useCallback((entries) => {
+      if (!roomInputRef.current) return;
+      const editorBaseEntry = getResizeObserverEntry(roomInputRef.current, entries);
+      if (!editorBaseEntry) return;
+
+      const timelineScroll = timelineScrollRef.current;
+      if (!roomTimeline.initialized) return;
+      if (timelineScroll.bottom < 40 && !roomTimeline.canPaginateForward() && document.visibilityState === 'visible') {
+        timelineScroll.scrollToBottom();
+      }
+    }, [roomInputRef]),
+    useCallback(() => roomInputRef.current, [roomInputRef]),
+  );
+  
+  const listenKeyboard = useCallback((event) => {
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+    if (event.key !== 'ArrowUp') return;
+    if (navigation.isRawModalVisible) return;
+>>>>>>> cinnyapp/cinny/dev
 
       if (document.activeElement.id !== 'message-textarea') return;
       if (document.activeElement.value !== '') return;
@@ -654,6 +680,9 @@ RoomViewContent.defaultProps = {
 RoomViewContent.propTypes = {
   eventId: PropTypes.string,
   roomTimeline: PropTypes.shape({}).isRequired,
+  roomInputRef: PropTypes.shape({
+    current: PropTypes.shape({})
+  }).isRequired
 };
 
 export default RoomViewContent;

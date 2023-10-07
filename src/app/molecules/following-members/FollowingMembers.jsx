@@ -17,23 +17,24 @@ function FollowingMembers({ roomTimeline }) {
   const [followingMembers, setFollowingMembers] = useState([]);
   const { roomId } = roomTimeline;
   const mx = initMatrix.matrixClient;
-  const { roomsInput } = initMatrix;
   const myUserId = mx.getUserId();
-
-  const handleOnMessageSent = () => setFollowingMembers([]);
 
   useEffect(() => {
     const updateFollowingMembers = () => {
       setFollowingMembers(roomTimeline.getLiveReaderReceipts());
     };
+    const updateOnEvent = (event, room) => {
+      if (room.roomId !== roomId) return;
+      setFollowingMembers(roomTimeline.getLiveReaders());
+    };
     updateFollowingMembers();
     roomTimeline.on(cons.events.roomTimeline.LIVE_RECEIPT, updateFollowingMembers);
-    roomsInput.on(cons.events.roomsInput.MESSAGE_SENT, handleOnMessageSent);
+    mx.on('Room.timeline', updateOnEvent);
     return () => {
       roomTimeline.removeListener(cons.events.roomTimeline.LIVE_RECEIPT, updateFollowingMembers);
-      roomsInput.removeListener(cons.events.roomsInput.MESSAGE_SENT, handleOnMessageSent);
+      mx.removeListener('Room.timeline', updateOnEvent);
     };
-  }, [roomTimeline]);
+  }, [roomTimeline, roomId]);
 
   const filteredM = followingMembers.map((r) => r.userId).filter((userId) => userId !== myUserId);
 

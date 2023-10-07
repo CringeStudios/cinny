@@ -20,6 +20,10 @@ const cons = {
     'm.sticker',
     'im.vector.modular.widgets',
   ],
+  supportReceiptTypes: [
+    'm.read',
+    'm.read.private',
+  ],
   notifs: {
     DEFAULT: 'default',
     ALL_MESSAGES: 'all_messages',

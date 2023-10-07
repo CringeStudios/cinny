@@ -10,23 +10,38 @@ import Navigation from '../../organisms/navigation/Navigation';
 import ContextMenu, { MenuItem } from '../../atoms/context-menu/ContextMenu';
 import IconButton from '../../atoms/button/IconButton';
 import ReusableContextMenu from '../../atoms/context-menu/ReusableContextMenu';
-import Room from '../../organisms/room/Room';
 import Windows from '../../organisms/pw/Windows';
 import Dialogs from '../../organisms/pw/Dialogs';
-import EmojiBoardOpener from '../../organisms/emoji-board/EmojiBoardOpener';
 
 import initMatrix from '../../../client/initMatrix';
 import navigation from '../../../client/state/navigation';
 import cons from '../../../client/state/cons';
-import DragDrop from '../../organisms/drag-drop/DragDrop';
 
 import VerticalMenuIC from '../../../../public/res/ic/outlined/vertical-menu.svg';
+<<<<<<< HEAD
 import JitsiWidget from '../../organisms/room/JitsiWidget';
+=======
+import { MatrixClientProvider } from '../../hooks/useMatrixClient';
+import { ClientContent } from './ClientContent';
+import { useSetting } from '../../state/hooks/settings';
+import { settingsAtom } from '../../state/settings';
+
+function SystemEmojiFeature() {
+  const [systemEmoji] = useSetting(settingsAtom, 'useSystemEmoji');
+
+  if (systemEmoji) {
+    document.documentElement.style.setProperty('--font-emoji', 'Twemoji_DISABLED');
+  } else {
+    document.documentElement.style.setProperty('--font-emoji', 'Twemoji');
+  }
+
+  return null;
+}
+>>>>>>> cinnyapp/cinny/dev
 
 function Client() {
   const [isLoading, changeLoading] = useState(true);
   const [loadingMsg, setLoadingMsg] = useState('Heating up');
-  const [dragCounter, setDragCounter] = useState(0);
   const classNameHidden = 'client__item-hidden';
 
   const navWrapperRef = useRef(null);
@@ -52,6 +67,7 @@ function Client() {
   }, []);
 
   useEffect(() => {
+    changeLoading(true);
     let counter = 0;
     const iId = setInterval(() => {
       const msgList = ['Almost there...', 'Looks like you have a lot of stuff to heat up!'];
@@ -105,73 +121,21 @@ function Client() {
     );
   }
 
-  function dragContainsFiles(e) {
-    if (!e.dataTransfer.types) return false;
-
-    for (let i = 0; i < e.dataTransfer.types.length; i += 1) {
-      if (e.dataTransfer.types[i] === 'Files') return true;
-    }
-    return false;
-  }
-
-  function modalOpen() {
-    return navigation.isRawModalVisible && dragCounter <= 0;
-  }
-
-  function handleDragOver(e) {
-    if (!dragContainsFiles(e)) return;
-
-    e.preventDefault();
-
-    if (!navigation.selectedRoomId || modalOpen()) {
-      e.dataTransfer.dropEffect = 'none';
-    }
-  }
-
-  function handleDragEnter(e) {
-    e.preventDefault();
-
-    if (navigation.selectedRoomId && !modalOpen() && dragContainsFiles(e)) {
-      setDragCounter(dragCounter + 1);
-    }
-  }
-
-  function handleDragLeave(e) {
-    e.preventDefault();
-
-    if (navigation.selectedRoomId && !modalOpen() && dragContainsFiles(e)) {
-      setDragCounter(dragCounter - 1);
-    }
-  }
-
-  function handleDrop(e) {
-    e.preventDefault();
-
-    setDragCounter(0);
-
-    if (modalOpen()) return;
-
-    const roomId = navigation.selectedRoomId;
-    if (!roomId) return;
-
-    const { files } = e.dataTransfer;
-    if (!files?.length) return;
-    const file = files[0];
-    initMatrix.roomsInput.setAttachment(roomId, file);
-    initMatrix.roomsInput.emit(cons.events.roomsInput.ATTACHMENT_SET, file);
-  }
-
   return (
-    <div
-      className="client-container"
-      onDragOver={handleDragOver}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <div className="navigation__wrapper" ref={navWrapperRef}>
-        <Navigation />
+    <MatrixClientProvider value={initMatrix.matrixClient}>
+      <div className="client-container">
+        <div className="navigation__wrapper" ref={navWrapperRef}>
+          <Navigation />
+        </div>
+        <div className={`room__wrapper ${classNameHidden}`} ref={roomWrapperRef}>
+          <ClientContent />
+        </div>
+        <Windows />
+        <Dialogs />
+        <ReusableContextMenu />
+        <SystemEmojiFeature />
       </div>
+<<<<<<< HEAD
       <div className="jitsi_pip">
         <JitsiWidget domain="call.vector.im" conferenceId="amogus" />
       </div>
@@ -184,6 +148,9 @@ function Client() {
       <ReusableContextMenu />
       <DragDrop isOpen={dragCounter !== 0} />
     </div>
+=======
+    </MatrixClientProvider>
+>>>>>>> cinnyapp/cinny/dev
   );
 }
 
