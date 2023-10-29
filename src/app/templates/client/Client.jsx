@@ -18,9 +18,7 @@ import navigation from '../../../client/state/navigation';
 import cons from '../../../client/state/cons';
 
 import VerticalMenuIC from '../../../../public/res/ic/outlined/vertical-menu.svg';
-<<<<<<< HEAD
 import JitsiWidget from '../../organisms/room/JitsiWidget';
-=======
 import { MatrixClientProvider } from '../../hooks/useMatrixClient';
 import { ClientContent } from './ClientContent';
 import { useSetting } from '../../state/hooks/settings';
@@ -37,7 +35,6 @@ function SystemEmojiFeature() {
 
   return null;
 }
->>>>>>> cinnyapp/cinny/dev
 
 function Client() {
   const [isLoading, changeLoading] = useState(true);
@@ -135,7 +132,6 @@ function Client() {
         <ReusableContextMenu />
         <SystemEmojiFeature />
       </div>
-<<<<<<< HEAD
       <div className="jitsi_pip">
         <JitsiWidget domain="call.vector.im" conferenceId="amogus" />
       </div>
@@ -147,10 +143,7 @@ function Client() {
       <EmojiBoardOpener />
       <ReusableContextMenu />
       <DragDrop isOpen={dragCounter !== 0} />
-    </div>
-=======
     </MatrixClientProvider>
->>>>>>> cinnyapp/cinny/dev
   );
 }
 

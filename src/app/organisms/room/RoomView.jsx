@@ -60,14 +60,6 @@ function RoomView({ room, eventId }) {
       <RoomViewHeader roomId={roomId} />
       <div className="room-view__content-wrapper">
         <div className="room-view__scrollable">
-<<<<<<< HEAD
-          <RoomViewContent eventId={eventId} roomTimeline={roomTimeline} />
-          <RoomViewFloating roomId={roomId} roomTimeline={roomTimeline} />
-        </div>
-        <div className="room-view__sticky">
-          <RoomViewInput roomId={roomId} roomTimeline={roomTimeline} viewEvent={viewEvent} />
-          <RoomViewCmdBar roomId={roomId} roomTimeline={roomTimeline} viewEvent={viewEvent} />
-=======
           <RoomTimeline
             key={roomId}
             room={room}
@@ -109,7 +101,6 @@ function RoomView({ room, eventId }) {
             )}
           </div>
           <RoomViewFollowing room={room} />
->>>>>>> cinnyapp/cinny/dev
         </div>
       </div>
     </div>
