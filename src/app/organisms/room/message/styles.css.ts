@@ -31,6 +31,11 @@ export const AbsoluteFooter = style([
   },
 ]);
 
+export const ModalWide = style({
+  minWidth: '85vw',
+  minHeight: '90vh',
+});
+
 export const MessageBase = style({
   position: 'relative',
 });
@@ -51,6 +56,10 @@ export const MessageOptionsBar = style([
   },
 ]);
 
+export const MessageAvatar = style({
+  cursor: 'pointer',
+});
+
 export const MessageQuickReaction = style({
   minWidth: toRem(32),
 });
@@ -69,4 +78,8 @@ export const ReactionsContainer = style({
       display: 'none',
     },
   },
+});
+
+export const ReactionsTooltipText = style({
+  wordBreak: 'break-word',
 });

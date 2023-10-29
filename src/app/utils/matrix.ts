@@ -28,6 +28,15 @@ export const isRoomId = (id: string): boolean => validMxId(id) && id.startsWith(
 
 export const isRoomAlias = (id: string): boolean => validMxId(id) && id.startsWith('#');
 
+export const parseMatrixToUrl = (url: string): [string | undefined, string | undefined] => {
+  const href = decodeURIComponent(url);
+
+  const match = href.match(/^https?:\/\/matrix.to\/#\/([@!$+#]\S+:[^\\?|^\s|^\\/]+)(\?(via=\S+))?/);
+  if (!match) return [undefined, undefined];
+  const [, g1AsMxId, , g3AsVia] = match;
+  return [g1AsMxId, g3AsVia];
+};
+
 export const getRoomWithCanonicalAlias = (mx: MatrixClient, alias: string): Room | undefined =>
   mx.getRooms()?.find((room) => room.getCanonicalAlias() === alias);
 
@@ -153,10 +162,10 @@ export const factoryEventSentBy = (senderId: string) => (ev: MatrixEvent) =>
 export const eventWithShortcode = (ev: MatrixEvent) =>
   typeof ev.getContent().shortcode === 'string';
 
-export const trimReplyFromBody = (body: string): string => {
-  if (body.match(/^> <.+>/) === null) return body;
+export function hasDMWith(mx: MatrixClient, userId: string) {
+  const dmLikeRooms = mx
+    .getRooms()
+    .filter((room) => mx.isRoomEncrypted(room.roomId) && room.getMembers().length <= 2);
 
-  const trimmedBody = body.slice(body.indexOf('\n\n') + 2);
-
-  return trimmedBody || body;
-};
+  return dmLikeRooms.find((room) => room.getMember(userId));
+}

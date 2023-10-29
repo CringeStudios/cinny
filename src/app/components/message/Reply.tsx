@@ -5,8 +5,8 @@ import React, { useEffect, useState } from 'react';
 import to from 'await-to-js';
 import classNames from 'classnames';
 import colorMXID from '../../../util/colorMXID';
-import { getMemberDisplayName } from '../../utils/room';
-import { getMxIdLocalPart, trimReplyFromBody } from '../../utils/matrix';
+import { getMemberDisplayName, trimReplyFromBody } from '../../utils/room';
+import { getMxIdLocalPart } from '../../utils/matrix';
 import { LinePlaceholder } from './placeholder';
 import { randomNumberBetween } from '../../utils/common';
 import * as css from './Reply.css';
@@ -59,6 +59,9 @@ export const Reply = as<'div', ReplyProps>(
       };
     }, [replyEvent, mx, room, eventId]);
 
+    const badEncryption = replyEvent?.getContent().msgtype === 'm.bad.encrypted';
+    const bodyJSX = body ? trimReplyFromBody(body) : fallbackBody;
+
     return (
       <Box
         className={classNames(css.Reply, className)}
@@ -67,7 +70,11 @@ export const Reply = as<'div', ReplyProps>(
         {...props}
         ref={ref}
       >
-        <Box style={{ color: colorMXID(sender ?? eventId) }} alignItems="Center" shrink="No">
+        <Box
+          style={{ color: colorMXID(sender ?? eventId), maxWidth: '50%' }}
+          alignItems="Center"
+          shrink="No"
+        >
           <Icon src={Icons.ReplyArrow} size="50" />
           {sender && (
             <Text size="T300" truncate>
@@ -78,11 +85,7 @@ export const Reply = as<'div', ReplyProps>(
         <Box grow="Yes" className={css.ReplyContent}>
           {replyEvent !== undefined ? (
             <Text className={css.ReplyContentText} size="T300" truncate>
-              {replyEvent?.getContent().msgtype === 'm.bad.encrypted' ? (
-                <MessageBadEncryptedContent />
-              ) : (
-                (body && trimReplyFromBody(body)) ?? fallbackBody
-              )}
+              {badEncryption ? <MessageBadEncryptedContent /> : bodyJSX}
             </Text>
           ) : (
             <LinePlaceholder

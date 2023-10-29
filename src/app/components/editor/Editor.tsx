@@ -18,7 +18,8 @@ import {
   RenderPlaceholderProps,
 } from 'slate-react';
 import { withHistory } from 'slate-history';
-import { BlockType, RenderElement, RenderLeaf } from './Elements';
+import { BlockType } from './types';
+import { RenderElement, RenderLeaf } from './Elements';
 import { CustomElement } from './slate';
 import * as css from './Editor.css';
 import { toggleKeyboardShortcut } from './keyboard';
@@ -34,8 +35,9 @@ const withInline = (editor: Editor): Editor => {
   const { isInline } = editor;
 
   editor.isInline = (element) =>
-    [BlockType.Mention, BlockType.Emoticon, BlockType.Link].includes(element.type) ||
-    isInline(element);
+    [BlockType.Mention, BlockType.Emoticon, BlockType.Link, BlockType.Command].includes(
+      element.type
+    ) || isInline(element);
 
   return editor;
 };
@@ -44,18 +46,20 @@ const withVoid = (editor: Editor): Editor => {
   const { isVoid } = editor;
 
   editor.isVoid = (element) =>
-    [BlockType.Mention, BlockType.Emoticon].includes(element.type) || isVoid(element);
+    [BlockType.Mention, BlockType.Emoticon, BlockType.Command].includes(element.type) ||
+    isVoid(element);
 
   return editor;
 };
 
 export const useEditor = (): Editor => {
-  const [editor] = useState(withInline(withVoid(withReact(withHistory(createEditor())))));
+  const [editor] = useState(() => withInline(withVoid(withReact(withHistory(createEditor())))));
   return editor;
 };
 
 export type EditorChangeHandler = (value: Descendant[]) => void;
 type CustomEditorProps = {
+  editableName?: string;
   top?: ReactNode;
   bottom?: ReactNode;
   before?: ReactNode;
@@ -71,6 +75,7 @@ type CustomEditorProps = {
 export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
   (
     {
+      editableName,
       top,
       bottom,
       before,
@@ -120,7 +125,7 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
 
     return (
       <div className={css.Editor} ref={ref}>
-        <Slate editor={editor} value={initialValue} onChange={onChange}>
+        <Slate editor={editor} initialValue={initialValue} onChange={onChange}>
           {top}
           <Box alignItems="Start">
             {before && (
@@ -137,6 +142,7 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
               hideTrack
             >
               <Editable
+                data-editable-name={editableName}
                 className={css.EditorTextarea}
                 placeholder={placeholder}
                 renderPlaceholder={renderPlaceholder}

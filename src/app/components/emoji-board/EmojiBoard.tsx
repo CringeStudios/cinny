@@ -13,6 +13,7 @@ import React, {
 import {
   Badge,
   Box,
+  Chip,
   Icon,
   IconButton,
   Icons,
@@ -27,7 +28,7 @@ import {
   toRem,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
-import isHotkey from 'is-hotkey';
+import { isKeyHotkey } from 'is-hotkey';
 import classNames from 'classnames';
 import { MatrixClient, Room } from 'matrix-js-sdk';
 import { atom, useAtomValue, useSetAtom } from 'jotai';
@@ -47,6 +48,7 @@ import { useAsyncSearch, UseAsyncSearchOptions } from '../../hooks/useAsyncSearc
 import { useDebounce } from '../../hooks/useDebounce';
 import { useThrottle } from '../../hooks/useThrottle';
 import { addRecentEmoji } from '../../plugins/recent-emoji';
+import { mobileOrTablet } from '../../utils/user-agent';
 
 const RECENT_GROUP_ID = 'recent_group';
 const SEARCH_GROUP_ID = 'search_group';
@@ -66,6 +68,7 @@ export type EmojiItemInfo = {
   type: EmojiType;
   data: string;
   shortcode: string;
+  label: string;
 };
 
 const getDOMGroupId = (id: string): string => `EmojiBoardGroup-${id}`;
@@ -73,13 +76,15 @@ const getDOMGroupId = (id: string): string => `EmojiBoardGroup-${id}`;
 const getEmojiItemInfo = (element: Element): EmojiItemInfo | undefined => {
   const type = element.getAttribute('data-emoji-type') as EmojiType | undefined;
   const data = element.getAttribute('data-emoji-data');
+  const label = element.getAttribute('title');
   const shortcode = element.getAttribute('data-emoji-shortcode');
 
-  if (type && data && shortcode)
+  if (type && data && shortcode && label)
     return {
       type,
       data,
       shortcode,
+      label,
     };
   return undefined;
 };
@@ -622,6 +627,7 @@ export function EmojiBoard({
   onEmojiSelect,
   onCustomEmojiSelect,
   onStickerSelect,
+  allowTextCustomEmoji,
 }: {
   tab?: EmojiBoardTab;
   onTabChange?: (tab: EmojiBoardTab) => void;
@@ -630,7 +636,8 @@ export function EmojiBoard({
   returnFocusOnDeactivate?: boolean;
   onEmojiSelect?: (unicode: string, shortcode: string) => void;
   onCustomEmojiSelect?: (mxc: string, shortcode: string) => void;
-  onStickerSelect?: (mxc: string, shortcode: string) => void;
+  onStickerSelect?: (mxc: string, shortcode: string, label: string) => void;
+  allowTextCustomEmoji?: boolean;
 }) {
   const emojiTab = tab === EmojiBoardTab.Emoji;
   const stickerTab = tab === EmojiBoardTab.Sticker;
@@ -708,7 +715,7 @@ export function EmojiBoard({
       if (!evt.altKey && !evt.shiftKey) requestClose();
     }
     if (emojiInfo.type === EmojiType.Sticker) {
-      onStickerSelect?.(emojiInfo.data, emojiInfo.shortcode);
+      onStickerSelect?.(emojiInfo.data, emojiInfo.shortcode, emojiInfo.label);
       if (!evt.altKey && !evt.shiftKey) requestClose();
     }
   };
@@ -765,9 +772,9 @@ export function EmojiBoard({
         clickOutsideDeactivates: true,
         allowOutsideClick: true,
         isKeyForward: (evt: KeyboardEvent) =>
-          !editableActiveElement() && isHotkey(['arrowdown', 'arrowright'], evt),
+          !editableActiveElement() && isKeyHotkey(['arrowdown', 'arrowright'], evt),
         isKeyBackward: (evt: KeyboardEvent) =>
-          !editableActiveElement() && isHotkey(['arrowup', 'arrowleft'], evt),
+          !editableActiveElement() && isKeyHotkey(['arrowup', 'arrowleft'], evt),
       }}
     >
       <EmojiBoardLayout
@@ -776,13 +783,36 @@ export function EmojiBoard({
             <Box direction="Column" gap="200">
               {onTabChange && <EmojiBoardTabs tab={tab} onTabChange={onTabChange} />}
               <Input
+                data-emoji-board-search
                 variant="SurfaceVariant"
                 size="400"
-                placeholder="Search"
+                placeholder={allowTextCustomEmoji ? 'Search or Text Reaction ' : 'Search'}
                 maxLength={50}
-                after={<Icon src={Icons.Search} size="50" />}
+                after={
+                  allowTextCustomEmoji && result?.query ? (
+                    <Chip
+                      variant="Primary"
+                      radii="Pill"
+                      after={<Icon src={Icons.ArrowRight} size="50" />}
+                      outlined
+                      onClick={() => {
+                        const searchInput = document.querySelector<HTMLInputElement>(
+                          '[data-emoji-board-search="true"]'
+                        );
+                        const textReaction = searchInput?.value.trim();
+                        if (!textReaction) return;
+                        onCustomEmojiSelect?.(textReaction, textReaction);
+                        requestClose();
+                      }}
+                    >
+                      <Text size="L400">React</Text>
+                    </Chip>
+                  ) : (
+                    <Icon src={Icons.Search} size="50" />
+                  )
+                }
                 onChange={handleOnChange}
-                autoFocus
+                autoFocus={!mobileOrTablet()}
               />
             </Box>
           </Header>

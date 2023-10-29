@@ -6,7 +6,7 @@ import cons from '../../../client/state/cons';
 import settings from '../../../client/state/settings';
 import navigation from '../../../client/state/navigation';
 import {
-  toggleSystemTheme, toggleMarkdown,
+  toggleSystemTheme,
   toggleNotifications, toggleNotificationSounds,
 } from '../../../client/action/settings';
 import { usePermission } from '../../hooks/usePermission';
@@ -45,13 +45,17 @@ import CinnySVG from '../../../../public/res/svg/cinny.svg';
 import { confirmDialog } from '../../molecules/confirm-dialog/ConfirmDialog';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
+import { isMacOS } from '../../utils/user-agent';
+import { KeySymbol } from '../../utils/key-symbol';
 
 function AppearanceSection() {
   const [, updateState] = useState({});
 
+  const [enterForNewline, setEnterForNewline] = useSetting(settingsAtom, 'enterForNewline');
   const [messageLayout, setMessageLayout] = useSetting(settingsAtom, 'messageLayout');
   const [messageSpacing, setMessageSpacing] = useSetting(settingsAtom, 'messageSpacing');
-  const [useSystemEmoji, setUseSystemEmoji] = useSetting(settingsAtom, 'useSystemEmoji');
+  const [twitterEmoji, setTwitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
+  const [isMarkdown, setIsMarkdown] = useSetting(settingsAtom, 'isMarkdown');
   const [hideMembershipEvents, setHideMembershipEvents] = useSetting(settingsAtom, 'hideMembershipEvents');
   const [hideNickAvatarEvents, setHideNickAvatarEvents] = useSetting(settingsAtom, 'hideNickAvatarEvents');
   const [mediaAutoLoad, setMediaAutoLoad] = useSetting(settingsAtom, 'mediaAutoLoad');
@@ -92,14 +96,14 @@ function AppearanceSection() {
         )}
         />
         <SettingTile
-          title="Use System Emoji"
+          title="Use Twitter Emoji"
           options={(
             <Toggle
-              isActive={useSystemEmoji}
-              onToggle={() => setUseSystemEmoji(!useSystemEmoji)}
+              isActive={twitterEmoji}
+              onToggle={() => setTwitterEmoji(!twitterEmoji)}
             />
           )}
-          content={<Text variant="b3">Use system emoji instead of Twitter emojis.</Text>}
+          content={<Text variant="b3">Use Twitter emoji instead of system emoji.</Text>}
         />
       </div>
       <div className="settings-appearance__card">
@@ -138,11 +142,21 @@ function AppearanceSection() {
           }
         />
         <SettingTile
+          title="Use ENTER for Newline"
+          options={(
+            <Toggle
+              isActive={enterForNewline}
+              onToggle={() => setEnterForNewline(!enterForNewline) }
+            />
+          )}
+          content={<Text variant="b3">{`Use ${isMacOS() ? KeySymbol.Command : 'Ctrl'} + ENTER to send message and ENTER for newline.`}</Text>}
+        />
+        <SettingTile
           title="Markdown formatting"
           options={(
             <Toggle
-              isActive={settings.isMarkdown}
-              onToggle={() => { toggleMarkdown(); updateState({}); }}
+              isActive={isMarkdown}
+              onToggle={() => setIsMarkdown(!isMarkdown) }
             />
           )}
           content={<Text variant="b3">Format messages with markdown syntax before sending.</Text>}
@@ -324,6 +338,10 @@ function AboutSection() {
             <li>
               {/* eslint-disable-next-line react/jsx-one-expression-per-line */ }
               <Text>The <a href="https://github.com/matrix-org/matrix-js-sdk" rel="noreferrer noopener" target="_blank">matrix-js-sdk</a> is © <a href="https://matrix.org/foundation" rel="noreferrer noopener" target="_blank">The Matrix.org Foundation C.I.C</a> used under the terms of <a href="http://www.apache.org/licenses/LICENSE-2.0" rel="noreferrer noopener" target="_blank">Apache 2.0</a>.</Text>
+            </li>
+            <li>
+              {/* eslint-disable-next-line react/jsx-one-expression-per-line */ }
+              <Text>The <a href="https://github.com/mozilla/twemoji-colr" target="_blank" rel="noreferrer noopener">twemoji-colr</a> font is © <a href="https://mozilla.org/" target="_blank" rel="noreferrer noopener">Mozilla Foundation</a> used under the terms of <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noreferrer noopener">Apache 2.0</a>.</Text>
             </li>
             <li>
               {/* eslint-disable-next-line react/jsx-one-expression-per-line */ }

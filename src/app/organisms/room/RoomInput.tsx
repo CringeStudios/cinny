@@ -9,10 +9,10 @@ import React, {
   useState,
 } from 'react';
 import { useAtom } from 'jotai';
-import isHotkey from 'is-hotkey';
+import { isKeyHotkey } from 'is-hotkey';
 import { EventType, IContent, MsgType, Room } from 'matrix-js-sdk';
 import { ReactEditor } from 'slate-react';
-import { Transforms, Range, Editor, Element } from 'slate';
+import { Transforms, Editor } from 'slate';
 import {
   Box,
   Dialog,
@@ -29,7 +29,6 @@ import {
   config,
   toRem,
 } from 'folds';
-import to from 'await-to-js';
 
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import {
@@ -51,6 +50,9 @@ import {
   resetEditorHistory,
   customHtmlEqualsPlainText,
   trimCustomHtml,
+  isEmptyEditor,
+  getBeginCommand,
+  trimCommand,
 } from '../../components/editor';
 import { EmojiBoard, EmojiBoardTab } from '../../components/emoji-board';
 import { UseStateProvider } from '../../components/UseStateProvider';
@@ -91,23 +93,32 @@ import {
   getImageMsgContent,
   getVideoMsgContent,
 } from './msgContent';
-import navigation from '../../../client/state/navigation';
-import cons from '../../../client/state/cons';
 import { MessageReply } from '../../molecules/message/Message';
 import colorMXID from '../../../util/colorMXID';
-import { parseReplyBody, parseReplyFormattedBody } from '../../utils/room';
+import {
+  parseReplyBody,
+  parseReplyFormattedBody,
+  trimReplyFromBody,
+  trimReplyFromFormattedBody,
+} from '../../utils/room';
 import { sanitizeText } from '../../utils/sanitize';
 import { useScreenSize } from '../../hooks/useScreenSize';
+import { CommandAutocomplete } from './CommandAutocomplete';
+import { Command, SHRUG, useCommands } from '../../hooks/useCommands';
+import { mobileOrTablet } from '../../utils/user-agent';
 
 interface RoomInputProps {
   editor: Editor;
   roomViewRef: RefObject<HTMLElement>;
   roomId: string;
+  room: Room;
 }
 export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
-  ({ editor, roomViewRef, roomId }, ref) => {
+  ({ editor, roomViewRef, roomId, room }, ref) => {
     const mx = useMatrixClient();
-    const room = mx.getRoom(roomId);
+    const [enterForNewline] = useSetting(settingsAtom, 'enterForNewline');
+    const [isMarkdown] = useSetting(settingsAtom, 'isMarkdown');
+    const commands = useCommands(mx, room);
 
     const [msgDraft, setMsgDraft] = useAtom(roomIdToMsgDraftAtomFamily(roomId));
     const [replyDraft, setReplyDraft] = useAtom(roomIdToReplyDraftAtomFamily(roomId));
@@ -169,35 +180,18 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     }, [editor, msgDraft]);
 
     useEffect(() => {
-      ReactEditor.focus(editor);
+      if (!mobileOrTablet()) ReactEditor.focus(editor);
       return () => {
-        const parsedDraft = JSON.parse(JSON.stringify(editor.children));
-        setMsgDraft(parsedDraft);
+        if (!isEmptyEditor(editor)) {
+          const parsedDraft = JSON.parse(JSON.stringify(editor.children));
+          setMsgDraft(parsedDraft);
+        } else {
+          setMsgDraft([]);
+        }
         resetEditor(editor);
         resetEditorHistory(editor);
       };
     }, [roomId, editor, setMsgDraft]);
-
-    useEffect(() => {
-      const handleReplyTo = (
-        userId: string,
-        eventId: string,
-        body: string,
-        formattedBody: string
-      ) => {
-        setReplyDraft({
-          userId,
-          eventId,
-          body,
-          formattedBody,
-        });
-        ReactEditor.focus(editor);
-      };
-      navigation.on(cons.events.navigation.REPLY_TO_CLICKED, handleReplyTo);
-      return () => {
-        navigation.removeListener(cons.events.navigation.REPLY_TO_CLICKED, handleReplyTo);
-      };
-    }, [setReplyDraft, editor]);
 
     const handleRemoveUpload = useCallback(
       (upload: TUploadContent | TUploadContent[]) => {
@@ -221,55 +215,82 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     };
 
     const handleSendUpload = async (uploads: UploadSuccess[]) => {
-      const sendPromises = uploads.map(async (upload) => {
+      const contentsPromises = uploads.map(async (upload) => {
         const fileItem = selectedFiles.find((f) => f.file === upload.file);
-        if (fileItem && fileItem.file.type.startsWith('image')) {
-          const [imgError, imgContent] = await to(getImageMsgContent(mx, fileItem, upload.mxc));
-          if (imgError) console.warn(imgError);
-          if (imgContent) mx.sendMessage(roomId, imgContent);
-          return;
+        if (!fileItem) throw new Error('Broken upload');
+
+        if (fileItem.file.type.startsWith('image')) {
+          return getImageMsgContent(mx, fileItem, upload.mxc);
         }
-        if (fileItem && fileItem.file.type.startsWith('video')) {
-          const [videoError, videoContent] = await to(getVideoMsgContent(mx, fileItem, upload.mxc));
-          if (videoError) console.warn(videoError);
-          if (videoContent) mx.sendMessage(roomId, videoContent);
-          return;
+        if (fileItem.file.type.startsWith('video')) {
+          return getVideoMsgContent(mx, fileItem, upload.mxc);
         }
-        if (fileItem && fileItem.file.type.startsWith('audio')) {
-          mx.sendMessage(roomId, getAudioMsgContent(fileItem, upload.mxc));
-          return;
+        if (fileItem.file.type.startsWith('audio')) {
+          return getAudioMsgContent(fileItem, upload.mxc);
         }
-        if (fileItem) {
-          mx.sendMessage(roomId, getFileMsgContent(fileItem, upload.mxc));
-        }
+        return getFileMsgContent(fileItem, upload.mxc);
       });
       handleCancelUpload(uploads);
-      await Promise.allSettled(sendPromises);
+      const contents = fulfilledPromiseSettledResult(await Promise.allSettled(contentsPromises));
+      contents.forEach((content) => mx.sendMessage(roomId, content));
     };
 
     const submit = useCallback(() => {
       uploadBoardHandlers.current?.handleSend();
 
-      const plainText = toPlainText(editor.children).trim();
-      const customHtml = trimCustomHtml(toMatrixCustomHTML(editor.children));
+      const commandName = getBeginCommand(editor);
+
+      let plainText = toPlainText(editor.children).trim();
+      let customHtml = trimCustomHtml(
+        toMatrixCustomHTML(editor.children, {
+          allowTextFormatting: true,
+          allowBlockMarkdown: isMarkdown,
+          allowInlineMarkdown: isMarkdown,
+        })
+      );
+      let msgType = MsgType.Text;
+
+      if (commandName) {
+        plainText = trimCommand(commandName, plainText);
+        customHtml = trimCommand(commandName, customHtml);
+      }
+      if (commandName === Command.Me) {
+        msgType = MsgType.Emote;
+      } else if (commandName === Command.Notice) {
+        msgType = MsgType.Notice;
+      } else if (commandName === Command.Shrug) {
+        plainText = `${SHRUG} ${plainText}`;
+        customHtml = `${SHRUG} ${customHtml}`;
+      } else if (commandName) {
+        const commandContent = commands[commandName as Command];
+        if (commandContent) {
+          commandContent.exe(plainText);
+        }
+        resetEditor(editor);
+        resetEditorHistory(editor);
+        sendTypingStatus(false);
+        return;
+      }
 
       if (plainText === '') return;
 
       let body = plainText;
       let formattedBody = customHtml;
       if (replyDraft) {
-        body = parseReplyBody(replyDraft.userId, replyDraft.userId) + body;
+        body = parseReplyBody(replyDraft.userId, trimReplyFromBody(replyDraft.body)) + body;
         formattedBody =
           parseReplyFormattedBody(
             roomId,
             replyDraft.userId,
             replyDraft.eventId,
-            replyDraft.formattedBody ?? sanitizeText(replyDraft.body)
+            replyDraft.formattedBody
+              ? trimReplyFromFormattedBody(replyDraft.formattedBody)
+              : sanitizeText(replyDraft.body)
           ) + formattedBody;
       }
 
       const content: IContent = {
-        msgtype: MsgType.Text,
+        msgtype: msgType,
         body,
       };
       if (replyDraft || !customHtmlEqualsPlainText(formattedBody, body)) {
@@ -288,53 +309,51 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       resetEditorHistory(editor);
       setReplyDraft();
       sendTypingStatus(false);
-    }, [mx, roomId, editor, replyDraft, sendTypingStatus, setReplyDraft]);
+    }, [mx, roomId, editor, replyDraft, sendTypingStatus, setReplyDraft, isMarkdown, commands]);
 
     const handleKeyDown: KeyboardEventHandler = useCallback(
       (evt) => {
-        if (isHotkey('enter', evt)) {
+        if (isKeyHotkey('mod+enter', evt) || (!enterForNewline && isKeyHotkey('enter', evt))) {
           evt.preventDefault();
           submit();
         }
-        if (isHotkey('escape', evt)) {
+        if (isKeyHotkey('escape', evt)) {
           evt.preventDefault();
           setReplyDraft();
         }
-
-        if (editor.selection && Range.isCollapsed(editor.selection)) {
-          if (isHotkey('arrowleft', evt)) {
-            evt.preventDefault();
-            Transforms.move(editor, { unit: 'offset', reverse: true });
-          }
-          if (isHotkey('arrowright', evt)) {
-            evt.preventDefault();
-            Transforms.move(editor, { unit: 'offset' });
-          }
-        }
       },
-      [submit, editor, setReplyDraft]
+      [submit, setReplyDraft, enterForNewline]
     );
 
-    const handleKeyUp: KeyboardEventHandler = useCallback(() => {
-      const firstChildren = editor.children[0];
-      if (firstChildren && Element.isElement(firstChildren)) {
-        const isEmpty = editor.children.length === 1 && Editor.isEmpty(editor, firstChildren);
-        sendTypingStatus(!isEmpty);
-      }
+    const handleKeyUp: KeyboardEventHandler = useCallback(
+      (evt) => {
+        if (isKeyHotkey('escape', evt)) {
+          evt.preventDefault();
+          return;
+        }
 
-      const prevWordRange = getPrevWorldRange(editor);
-      const query = prevWordRange
-        ? getAutocompleteQuery<AutocompletePrefix>(editor, prevWordRange, AUTOCOMPLETE_PREFIXES)
-        : undefined;
-      setAutocompleteQuery(query);
-    }, [editor, sendTypingStatus]);
+        sendTypingStatus(!isEmptyEditor(editor));
+
+        const prevWordRange = getPrevWorldRange(editor);
+        const query = prevWordRange
+          ? getAutocompleteQuery<AutocompletePrefix>(editor, prevWordRange, AUTOCOMPLETE_PREFIXES)
+          : undefined;
+        setAutocompleteQuery(query);
+      },
+      [editor, sendTypingStatus]
+    );
+
+    const handleCloseAutocomplete = useCallback(() => {
+      setAutocompleteQuery(undefined);
+      ReactEditor.focus(editor);
+    }, [editor]);
 
     const handleEmoticonSelect = (key: string, shortcode: string) => {
       editor.insertNode(createEmoticonElement(key, shortcode));
       moveCursor(editor);
     };
 
-    const handleStickerSelect = async (mxc: string, shortcode: string) => {
+    const handleStickerSelect = async (mxc: string, shortcode: string, label: string) => {
       const stickerUrl = mx.mxcUrlToHttp(mxc);
       if (!stickerUrl) return;
 
@@ -344,7 +363,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       );
 
       mx.sendEvent(roomId, EventType.Sticker, {
-        body: shortcode,
+        body: label,
         url: mxc,
         info,
       });
@@ -413,15 +432,15 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             roomId={roomId}
             editor={editor}
             query={autocompleteQuery}
-            requestClose={() => setAutocompleteQuery(undefined)}
+            requestClose={handleCloseAutocomplete}
           />
         )}
         {autocompleteQuery?.prefix === AutocompletePrefix.UserMention && (
           <UserMentionAutocomplete
-            roomId={roomId}
+            room={room}
             editor={editor}
             query={autocompleteQuery}
-            requestClose={() => setAutocompleteQuery(undefined)}
+            requestClose={handleCloseAutocomplete}
           />
         )}
         {autocompleteQuery?.prefix === AutocompletePrefix.Emoticon && (
@@ -429,10 +448,19 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             imagePackRooms={imagePackRooms}
             editor={editor}
             query={autocompleteQuery}
-            requestClose={() => setAutocompleteQuery(undefined)}
+            requestClose={handleCloseAutocomplete}
+          />
+        )}
+        {autocompleteQuery?.prefix === AutocompletePrefix.Command && (
+          <CommandAutocomplete
+            room={room}
+            editor={editor}
+            query={autocompleteQuery}
+            requestClose={handleCloseAutocomplete}
           />
         )}
         <CustomEditor
+          editableName="RoomInput"
           editor={editor}
           placeholder="Send a message..."
           onKeyDown={handleKeyDown}
@@ -502,7 +530,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                         onStickerSelect={handleStickerSelect}
                         requestClose={() => {
                           setEmojiBoardTab(undefined);
-                          ReactEditor.focus(editor);
+                          if (!mobileOrTablet()) ReactEditor.focus(editor);
                         }}
                       />
                     }
